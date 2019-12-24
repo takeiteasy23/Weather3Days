@@ -1,0 +1,247 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+    <title></title>
+
+    <style type="text/css">
+        .cube   {
+            position: absolute;
+            z-index: 1;
+            height: 150px;
+            width: 250px;
+            background-color: #EEEEEE;
+            visibility: hidden;
+            pointer-events: none;   /* 顯示框閃爍解法 */
+        }
+
+        body{
+            position: absolute;
+            top: 20px;
+            left: 20px
+        }
+    </style>
+
+    <script type="text/javascript">
+
+        var url = "https://opendata.cwb.gov.tw/api/v1/rest/datastore/F-D0047-049?Authorization=/*your authorization*/&locationName=%E4%B8%AD%E6%AD%A3%E5%8D%80";
+
+        function LoadInfo() {
+            fetch(url)  // fetch...36-39 取得json格式資料
+            .then(res => {
+                return res.json();
+            }).then(result => {
+                caption.innerHTML = result.records.locations[0].datasetDescription + "&nbsp;&nbsp;&nbsp;&nbsp;"
+                                    + result.records.locations[0].locationsName + result.records.locations[0].location[0].locationName;
+                SetTHead(result);
+                SetTBody(result);
+            });
+        }
+
+        function SetTHead(result){
+            let time = "<tr><th rowspan='2'></th>";
+
+            let timeHead = result.records.locations[0].location[0].weatherElement[1];
+
+            let timeSplit = SetColspan(result, timeHead);
+
+            if(timeHead.time[0].startTime.split(" ")[0] != timeHead.time[6].startTime.split(" ")[0]){
+                time += "<th scope='col' colspan = '" + timeSplit[0] + "' style='text-align:center'>"
+                        + timeHead.time[0].startTime.split(" ")[0] + "</th>";
+                time += "<th scope='col' colspan = '" + timeSplit[1] + "' style='text-align:center'>"
+                        + timeHead.time[6].startTime.split(" ")[0] + "</th>";
+                time += "<th scope='col' colspan = '" + timeSplit[2] + "' style='text-align:center'>"
+                        + timeHead.time[14].startTime.split(" ")[0] + "</th>";
+                time += "<th scope='col' colspan = '" + timeSplit[3] + "' style='text-align:center'>"
+                        + timeHead.time[22].startTime.split(" ")[0] + "</th>";
+            }
+            else{
+                time += "<th scope='col' colspan = '" + timeSplit[0] + "' style='text-align:center'>"
+                        + timeHead.time[0].startTime.split(" ")[0] + "</th>";
+                time += "<th scope='col' colspan = '" + timeSplit[1] + "' style='text-align:center'>"
+                        + timeHead.time[8].startTime.split(" ")[0] + "</th>";
+                time += "<th scope='col' colspan = '" + timeSplit[2] + "' style='text-align:center'>"
+                        + timeHead.time[16].startTime.split(" ")[0] + "</th>";
+            }
+
+            time += "</tr><tr>";
+
+            for(var i = 0; i < 24; i++){    // 固定會有24筆資料 (72 / 3 = 24)
+                time += "<th width='120px' id='date' style='text-align:center' onmouseover='ShowCube(" + i + ")' onmouseout='HiddenCube()'><nobr>" + timeHead.time[i].startTime.split(" ")[1].split(":")[0]
+                + "-" + timeHead.time[i].endTime.split(" ")[1].split(":")[0] + "</nobr></th>";  // 取小時
+            }
+
+            time += "</tr>";
+            thead.innerHTML = time;
+        }
+
+        function SetColspan(result, timeHead){  // 不同時間會更新，每日比數不一，日期欄位寬度不一
+            let timeSplit = new Array(4);
+            let Day = timeHead.time[0].startTime.split(" ")[0];
+            for(var i = 0,j = 0;i < 24, j < 3;i++){
+                if(timeHead.time[i].startTime.split(" ")[0] != Day){
+                    timeSplit[j] = i;
+                    j++;
+                    Day = timeHead.time[i].startTime.split(" ")[0];
+                }
+            }
+
+            if(timeHead.time[0].startTime.split(" ")[0] != timeHead.time[6].startTime.split(" ")[0]){
+                timeSplit[3] = 24 - timeSplit[2];
+                timeSplit[2] -= timeSplit[1];
+            }
+            else{
+                timeSplit[2] = 24 - timeSplit[1];
+            }
+
+            timeSplit[1] -= timeSplit[0];
+            
+            return timeSplit;
+        }
+
+        function SetTBody(result){
+            let item = "";
+            let itemBody = result.records.locations[0].location[0];
+
+            for(var i = 1; i <= 10;i++){
+                if(i != 6){ // 6: 綜合敘述
+                    item += "<tr><th scope='row' colspan='1' style='text-align:center'><nobr>"
+                            + itemBody.weatherElement[i].description + "</nobr></th>";
+
+                    let itemColspan;
+                    if(i == 7) itemColspan = 2; // 6hr
+                    else itemColspan = 1;   // 3hr
+
+                    let itemElementValue;
+                    if(i==5) itemElementValue = 1;  // 舒適度指數文字描述
+                    else itemElementValue = 0;
+
+                    for(var j = 0; j < itemBody.weatherElement[i].time.length; j++){
+                        item += "<td colspan='" + itemColspan + "' style='text-align:center'><nobr>"
+                                + itemBody.weatherElement[i].time[j].elementValue[itemElementValue].value + "</nobr></td>";
+                    }
+                    item += "</tr>";
+                }
+            }
+            tbody.innerHTML = item;
+        }
+
+        function ShowCube(i){
+            let e = window.event;
+            let cube = document.getElementById("cube");
+            cube.style.visibility = "visible";
+
+            if (e.pageX || e.pageY)     {
+                cube.style.left = e.pageX + document.body.scrollLeft + document.getElementById("scroll").scrollLeft - (250 * i / 24) + "px";
+                cube.style.top = e.pageY + document.body.scrollTop  + document.getElementById("scroll").scrollTop + "px";
+            }
+            else if (e.clientX || e.clientY)     {//for fucking IE
+                cube.style.left = e.clientX - (250 * i / 24) + "px" ;//+ document.body.scrollLeft+ document.documentElement.scrollLeft;
+                cube.style.top = e.clientY + "px" ;//+ document.body.scrollTop + document.documentElement.scrollTop;
+            }
+
+            fetch(url)
+            .then(res => {
+                return res.json();
+            }).then(result => {
+                cube.innerHTML = result.records.locations[0].location[0].weatherElement[6].time[i].elementValue[0].value.split("。").join("<br/>");
+            });
+
+        }
+
+        function HiddenCube(){
+            document.getElementById("cube").style.visibility = "hidden";
+        }
+
+        function SetSecondDropdown(index, city){
+            document.getElementById("BtnCity").innerHTML = city;
+            document.getElementById("BtnTown").innerHTML = "鄉鎮區";
+            url = "https://opendata.cwb.gov.tw/api/v1/rest/datastore/" + index
+                    + "?Authorization=CWB-62FCDBF7-ECE2-4950-8666-FB5366D2E886";
+
+            fetch(url)
+            .then(res => {
+                return res.json();
+            }).then(result => {
+                var townlist = result.records.locations[0];
+                var town = "";
+
+                for(var i=0; i<townlist.location.length;i++){
+                    town += "<a class='dropdown-item' href='#' onclick='Reload(" + '"' + townlist.location[i].locationName + '"' + ")'>" + townlist.location[i].locationName + "</a>"
+                }
+
+                document.getElementById("town").innerHTML = town;
+            });
+        }
+
+        function Reload(town){
+            document.getElementById("BtnTown").innerHTML = town;
+            url = url.split("&")[0] + "&locationName=" + town;  //若有locationName要先拿掉
+            LoadInfo();
+        }
+
+        window.onload = LoadInfo;   // 初始: 基隆中正區
+    </script>
+</head>
+<body>
+    <div class="btn-group"> <!-- button並排 -->
+        <button class="btn btn-info dropdown-toggle" type="button" id="BtnCity" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            縣市
+        </button>
+        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton"> <!-- 不確定href能不能拿掉 -->
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-001', '宜蘭縣')">宜蘭縣</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-005', '桃園市')">桃園市</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-009', '新竹縣')">新竹縣</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-013', '苗栗縣')">苗栗縣</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-017', '彰化縣')">彰化縣</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-021', '南投縣')">南投縣</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-025', '雲林縣')">雲林縣</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-029', '嘉義縣')">嘉義縣</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-033', '屏東縣')">屏東縣</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-037', '臺東縣')">臺東縣</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-041', '花蓮縣')">花蓮縣</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-045', '澎湖縣')">澎湖縣</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-049', '基隆市')">基隆市</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-053', '新竹市')">新竹市</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-057', '嘉義市')">嘉義市</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-061', '臺北市')">臺北市</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-065', '高雄市')">高雄市</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-069', '新北市')">新北市</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-073', '臺中市')">臺中市</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-077', '臺南市')">臺南市</a>
+            <a class="dropdown-item" href="#" onclick="SetSecondDropdown('F-D0047-081', '連江市')">連江市</a>
+        </div>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn btn-warning dropdown-toggle" type="button" id="BtnTown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            鄉鎮區
+        </button>
+        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton" id="town"></div>
+    </div>
+
+    <br/><br/>
+
+    <div id="scroll" style="overflow: auto; z-index: 0;">
+        <table class="table table-bordered">
+            <caption id="caption"></caption>
+            <thead id="thead"></thead>
+            <tbody id="tbody"></tbody>
+        </table>
+    </div>
+
+    <div id="cube" class="cube rounded border"></div>
+    <div id="test"></div>
+
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="
+    sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+</body>
+</html>
